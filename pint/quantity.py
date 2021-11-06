@@ -128,6 +128,22 @@ def ireduce_dimensions(f):
     return wrapped
 
 
+def iapply_unit_priority(x, unit_priorities: list = None):
+    """Use the prioritized unit.
+
+    The first unit in the list which is compatible with x is chosen.
+    If no prioritized unit is compatible the unit remains unchanged.
+    """
+    if unit_priorities:
+        for preferred_unit in unit_priorities:
+            try:
+                x.ito(preferred_unit)
+                break
+            except DimensionalityError:
+                pass
+    return x
+
+
 def check_implemented(f):
     def wrapped(self, *args, **kwargs):
         other = args[0]
@@ -763,7 +779,7 @@ class Quantity(PrettyIPython, SharedRegistryObject, Generic[_MagnitudeType]):
 
         return self.__class__(magnitude, other)
 
-    def ito_reduced_units(self) -> None:
+    def ito_reduced_units(self, unit_priorities=None) -> None:
         """Return Quantity scaled in place to reduced units, i.e. one unit per
         dimension. This will not reduce compound units (e.g., 'J/kg' will not
         be reduced to m**2/s**2), nor can it make use of contexts at this time.
@@ -775,23 +791,27 @@ class Quantity(PrettyIPython, SharedRegistryObject, Generic[_MagnitudeType]):
         if len(self._units) == 1:
             return None
 
-        newunits = self._units.copy()
-        # loop through individual units and compare to each other unit
-        # can we do better than a nested loop here?
-        for unit1, exp in self._units.items():
-            # make sure it wasn't already reduced to zero exponent on prior pass
-            if unit1 not in newunits:
-                continue
-            for unit2 in newunits:
-                if unit1 != unit2:
-                    power = self._REGISTRY._get_dimensionality_ratio(unit1, unit2)
-                    if power:
-                        newunits = newunits.add(unit2, exp / power).remove([unit1])
-                        break
+        if unit_priorities:
+            iapply_unit_priority(self, unit_priorities)
+        else:
+            newunits = self._units.copy()
+            # loop through individual units and compare to each other unit
+            # can we do better than a nested loop here?
+            for unit1, exp in self._units.items():
+                # make sure it wasn't already reduced to zero exponent on prior pass
+                if unit1 not in newunits:
+                    continue
+                for unit2 in newunits:
+                    if unit1 != unit2:
+                        power = self._REGISTRY._get_dimensionality_ratio(unit1, unit2)
+                        if power:
+                            newunits = newunits.add(unit2, exp / power).remove([unit1])
+                            break
+            self.ito(newunits)
 
-        return self.ito(newunits)
+        return self
 
-    def to_reduced_units(self) -> Quantity[_MagnitudeType]:
+    def to_reduced_units(self, unit_priorities=None) -> Quantity[_MagnitudeType]:
         """Return Quantity scaled in place to reduced units, i.e. one unit per
         dimension. This will not reduce compound units (intentionally), nor
         can it make use of contexts at this time.
@@ -799,7 +819,7 @@ class Quantity(PrettyIPython, SharedRegistryObject, Generic[_MagnitudeType]):
 
         # can we make this more efficient?
         newq = copy.copy(self)
-        newq.ito_reduced_units()
+        newq.ito_reduced_units(unit_priorities=unit_priorities)
         return newq
 
     def to_compact(self, unit=None) -> Quantity[_MagnitudeType]:
