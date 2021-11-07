@@ -200,6 +200,8 @@ class BaseRegistry(metaclass=RegistryMeta):
         action to take in case a unit is redefined: 'warn', 'raise', 'ignore'
     auto_reduce_dimensions :
         If True, reduce dimensionality on appropriate operations.
+    unit_priorities : list
+        Unit priority list for the dimensionality reduction.
     preprocessors :
         list of callables which are iteratively ran on any input expression or unit
         string
@@ -226,6 +228,7 @@ class BaseRegistry(metaclass=RegistryMeta):
         force_ndarray_like: bool = False,
         on_redefinition: str = "warn",
         auto_reduce_dimensions: bool = False,
+        unit_priorities: Optional[List] = None,
         preprocessors: Optional[List[PreprocessorType]] = None,
         fmt_locale: Optional[str] = None,
         non_int_type: NON_INT_TYPE = float,
@@ -244,6 +247,9 @@ class BaseRegistry(metaclass=RegistryMeta):
 
         #: Determines if dimensionality should be reduced on appropriate operations.
         self.auto_reduce_dimensions = auto_reduce_dimensions
+
+        #: Determines the priority list of dimensions for the reduction.
+        self.unit_priorities = unit_priorities
 
         #: Default locale identifier string, used when calling format_babel without explicit locale.
         self.set_fmt_locale(fmt_locale)

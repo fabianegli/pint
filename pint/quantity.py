@@ -791,6 +791,8 @@ class Quantity(PrettyIPython, SharedRegistryObject, Generic[_MagnitudeType]):
         if len(self._units) == 1:
             return None
 
+        # Use registry defaults, if they are set
+        unit_priorities = unit_priorities or self._REGISTRY.unit_priorities
         if unit_priorities:
             iapply_unit_priority(self, unit_priorities)
         else:
